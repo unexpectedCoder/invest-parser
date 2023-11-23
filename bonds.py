@@ -91,12 +91,12 @@ def calc_days(bonds: pd.DataFrame):
 
 
 if __name__ == "__main__":
+    from tqdm import tqdm
     import os
 
-    print("Парсинг ОФЗ...")
     start_end = (0, 99), (100, 199), (200, 299), (300, 399), (400, 499)
     bonds_ = []
-    for start, end in start_end:
+    for start, end in tqdm(start_end, "Парсинг ОФЗ"):
         url_ = f"https://www.tinkoff.ru/invest/bonds/?start={start}&end={end}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
         bonds_.append(get_bonds(InvestURL.TINKOFF.value, url_))
         time.sleep(1.2)
