@@ -2,3 +2,6 @@
 !.gitignore
 *.xlsx
 *.xls
+*.csv
+__*
+!__init__.py

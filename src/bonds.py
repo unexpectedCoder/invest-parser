@@ -1,17 +1,14 @@
 from bs4 import BeautifulSoup
 from datetime import date
-from enum import Enum
 import pandas as pd
 import requests
 import time
 
-
-class InvestURL(Enum):
-    TINKOFF = "https://www.tinkoff.ru"
+from src.helpers import TINKOFF_URL, get_bonds_url
 
 
 def get_bonds(invest_url: str, table_url: str):
-    urls, isin_list = _get_bonds_url(invest_url, table_url)
+    urls, isin_list = get_bonds_url(invest_url, table_url)
     bonds = []
     for url, isin in zip(urls, isin_list):
         bond = _get_bond(url, isin)
@@ -20,22 +17,6 @@ def get_bonds(invest_url: str, table_url: str):
         if isinstance(bond, dict):
             bonds.append(bond)
     return pd.DataFrame(bonds)
-
-
-def _get_bonds_url(invest_url: str, table_url: str):
-    page = requests.get(table_url)
-    if (sc := page.status_code) != 200:
-        raise RuntimeError(
-            f"не удалось подключиться (status_code = {sc})"
-        )
-    body = BeautifulSoup(page.content, "html.parser").body
-    table = body.find(
-        "table", {"data-qa-file": "DataTable"}
-    )
-    rows = table.tbody.find_all("tr")
-    refs = [invest_url + tr.a["href"] for tr in rows]
-    isin_list = [ref.split("/")[-2] for ref in refs]
-    return refs, isin_list
 
 
 def _get_bond(url: str, isin: str):
@@ -98,7 +79,7 @@ if __name__ == "__main__":
     bonds_ = []
     for start, end in tqdm(start_end, "Парсинг ОФЗ"):
         url_ = f"https://www.tinkoff.ru/invest/bonds/?start={start}&end={end}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
-        bonds_.append(get_bonds(InvestURL.TINKOFF.value, url_))
+        bonds_.append(get_bonds(TINKOFF_URL, url_))
         time.sleep(1.2)
     excel_name = "all_bonds.xlsx"
     bonds_ = pd.concat(bonds_)
