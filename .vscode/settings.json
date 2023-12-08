@@ -1,0 +1,11 @@
+{
+    "python.envFile": "${workspaceFolder}/vscode.env",
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH":
+        "${env:PYTHONPATH}:${workspaceFolder}/src:${workspaceFolder}/tests",
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH":
+        "${env:PYTHONPATH};${workspaceFolder}/src;${workspaceFolder}/tests",
+    }
+}

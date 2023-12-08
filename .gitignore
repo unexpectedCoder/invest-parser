@@ -1,5 +1,6 @@
 .*
 !.gitignore
+!.vscode
 *.xlsx
 *.xls
 *.csv

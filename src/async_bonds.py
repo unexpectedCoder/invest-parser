@@ -28,7 +28,7 @@ async def parse_bonds(bonds_url: str, pool: Pool):
                         pool.apply_async(_process_bond, (done_task.result(),))
                     )
                 else:
-                    logging.log(exc_info=done_task.exception())
+                    logging.error("Ошибка", exc_info=done_task.exception())
         return [r.get() for r in results]
 
 
