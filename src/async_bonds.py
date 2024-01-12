@@ -35,7 +35,7 @@ async def parse_bonds(bonds_url: str, pool: Pool):
 async def _get_bond(session: ClientSession, url: str, isin: str):
     async with session.get(url) as resp:
         page = await resp.read()
-        body = BeautifulSoup(page, "html.parser").body
+        body = BeautifulSoup(page, "html5lib").body
         tables = body.find_all("table", {"data-qa-file": "Table"})
         cells = []
         for table in tables:
@@ -45,6 +45,8 @@ async def _get_bond(session: ClientSession, url: str, isin: str):
             for c1, c2 in zip(cells[::2], cells[1::2])
         }
         price_table = body.find("div", {"data-qa-file": "SecurityPriceDetails"})
+        if price_table is None:
+            raise RuntimeError(url)
         price = price_table.find("span")
         if price.text[0].isdigit():
             price = float(
@@ -81,9 +83,9 @@ def _process_bond(bond: Bond):
 
 def calc_current_yield(bonds: pd.DataFrame):
     return \
-        bonds["Величина купона"] * \
+        bonds["Величина купона"] * 0.87 * \
         bonds["Количество выплат в год"] / \
-        bonds["Рыночная цена"]
+        (bonds["Рыночная цена"] * 1.003)
 
 
 def calc_days(bonds: pd.DataFrame):
@@ -92,9 +94,13 @@ def calc_days(bonds: pd.DataFrame):
     ) + pd.Timedelta(days=1)
 
 
+def calc_nkd(bonds: pd.DataFrame):
+    return bonds["Накопленный купонный доход"] / bonds["Величина купона"]
+
+
 if __name__ == "__main__":
     _url = TINKOFF_URL + \
-        f"/invest/bonds/?start={0}&end={450}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
+        f"/invest/bonds/?start={0}&end={500}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
     with Pool() as _pool:
         loop = asyncio.get_event_loop()
         _bonds = loop.run_until_complete(parse_bonds(_url, _pool))
@@ -102,6 +108,7 @@ if __name__ == "__main__":
         _data = pd.DataFrame(_bonds)
         _data["Текущая доходность"] = calc_current_yield(_data)
         _data["Дней до погашения"] = calc_days(_data)
+        _data["% НКД от купона"] = calc_nkd(_data)
         _data.sort_values(["Текущая доходность"], ascending=False, inplace=True)
         _save_file = "all_bonds.xlsx"
         _data.to_excel(_save_file)
