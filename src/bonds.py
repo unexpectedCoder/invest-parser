@@ -7,8 +7,8 @@ import time
 from src.helpers import TINKOFF_URL, get_bonds_url
 
 
-def get_bonds(invest_url: str, table_url: str):
-    urls, isin_list = get_bonds_url(invest_url, table_url)
+def get_bonds(bonds_url: str):
+    urls, isin_list = get_bonds_url(bonds_url)
     bonds = []
     for url, isin in zip(urls, isin_list):
         bond = _get_bond(url, isin)
@@ -71,6 +71,10 @@ def calc_days(bonds: pd.DataFrame):
     return (pd.to_datetime(bonds["Дата погашения облигации"]) - pd.to_datetime("today")) + pd.Timedelta(days=1)
 
 
+def calc_nkd(bonds: pd.DataFrame):
+    return bonds["Накопленный купонный доход"] / bonds["Величина купона"]
+
+
 if __name__ == "__main__":
     from tqdm import tqdm
     import os
@@ -78,13 +82,16 @@ if __name__ == "__main__":
     start_end = (0, 99), (100, 199), (200, 299), (300, 399), (400, 499)
     bonds_ = []
     for start, end in tqdm(start_end, "Парсинг ОФЗ"):
-        url_ = f"https://www.tinkoff.ru/invest/bonds/?start={start}&end={end}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
-        bonds_.append(get_bonds(TINKOFF_URL, url_))
+        url_ = TINKOFF_URL + \
+            f"/invest/bonds/?start={start}&end={end}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
+        bonds_.append(get_bonds(url_))
         time.sleep(1.2)
     excel_name = "all_bonds.xlsx"
     bonds_ = pd.concat(bonds_)
     bonds_["Текущая доходность"] = calc_current_yield(bonds_)
     bonds_["Дней до погашения"] = calc_days(bonds_)
+    bonds_["% НКД от купона"] = calc_nkd(bonds_)
     bonds_.sort_values(["Текущая доходность"], ascending=False, inplace=True)
-    bonds_.to_excel(excel_name)
-    print(f"Результат сохранён в '{os.path.abspath(excel_name)}'")
+    _save_file = "all_bonds.xlsx"
+    bonds_.to_excel(_save_file)
+    print(f"Результат сохранён в '{os.path.abspath(_save_file)}'")
