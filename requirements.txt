@@ -4,3 +4,5 @@ requests
 beautifulsoup4
 tqdm
 xlsxwriter
+termcolor
+pyarrow

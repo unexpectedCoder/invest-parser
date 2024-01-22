@@ -5,9 +5,8 @@ from multiprocessing.pool import Pool
 import asyncio
 import logging
 import os
-import pandas as pd
 
-from src.helpers import TINKOFF_URL, Bond, get_bonds_url
+from src.helpers import Bond, get_bonds_url
 
 
 async def parse_bonds(bonds_url: str, pool: Pool):
@@ -81,35 +80,34 @@ def _process_bond(bond: Bond):
     return data
 
 
-def calc_current_yield(bonds: pd.DataFrame):
-    return \
-        bonds["Величина купона"] * 0.87 * \
-        bonds["Количество выплат в год"] / \
-        (bonds["Рыночная цена"] * 1.003)
-
-
-def calc_days(bonds: pd.DataFrame):
-    return (
-        pd.to_datetime(bonds["Дата погашения облигации"]) - pd.to_datetime("today")
-    ) + pd.Timedelta(days=1)
-
-
-def calc_nkd(bonds: pd.DataFrame):
-    return bonds["Накопленный купонный доход"] / bonds["Величина купона"]
-
-
 if __name__ == "__main__":
-    _url = TINKOFF_URL + \
-        f"/invest/bonds/?start={0}&end={500}&country=Russian&orderType=Desc&sortType=ByYieldToClient&rate=2"
-    with Pool() as _pool:
+    from termcolor import cprint
+    from src.calculator import data_postprocessing
+    from src.helpers import TINKOFF_URL, create_cmd_parser
+
+    args = create_cmd_parser().parse_args()
+    url = TINKOFF_URL + \
+        f"/invest/bonds/" \
+        f"?start={args.start}" \
+        f"&end={args.end}" \
+        f"&country=Russian&orderType=Desc&sortType=ByYieldToClient" \
+        f"&rate={args.rate}"
+    
+    print(f"Парсинг {url}...")
+    with Pool() as pool:
         loop = asyncio.get_event_loop()
-        _bonds = loop.run_until_complete(parse_bonds(_url, _pool))
+        bonds = loop.run_until_complete(parse_bonds(url, pool))
         loop.close()
-        _data = pd.DataFrame(_bonds)
-        _data["Текущая доходность"] = calc_current_yield(_data)
-        _data["Дней до погашения"] = calc_days(_data)
-        _data["% НКД от купона"] = calc_nkd(_data)
-        _data.sort_values(["Текущая доходность"], ascending=False, inplace=True)
-        _save_file = "all_bonds.xlsx"
-        _data.to_excel(_save_file)
-        print(f"Результат сохранён в '{os.path.abspath(_save_file)}'")
+    data = data_postprocessing(bonds)
+    data.sort_values(["Текущая доходность"], ascending=False, inplace=True)
+
+    save_file: str = args.output
+    if save_file.endswith(".xlsx") or save_file.endswith(".xls"):
+        data.to_excel(save_file)
+    elif save_file.endswith(".csv"):
+        data.to_csv(save_file)
+    else:
+        raise ValueError("неподдерживаемый формат выходного файла")
+
+    print("Готово!")
+    cprint(f"Результат сохранён в '{os.path.abspath(save_file)}'", "green")
