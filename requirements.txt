@@ -6,3 +6,4 @@ tqdm
 xlsxwriter
 termcolor
 pyarrow
+html5lib

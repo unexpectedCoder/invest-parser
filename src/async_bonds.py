@@ -100,8 +100,11 @@ if __name__ == "__main__":
         loop.close()
     data = data_postprocessing(bonds)
     data.sort_values(["Текущая доходность"], ascending=False, inplace=True)
-
-    save_file: str = args.output
+    
+    save_dir = "results"
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
+    save_file: str = os.path.join(save_dir, args.output)
     if save_file.endswith(".xlsx") or save_file.endswith(".xls"):
         data.to_excel(save_file)
     elif save_file.endswith(".csv"):
