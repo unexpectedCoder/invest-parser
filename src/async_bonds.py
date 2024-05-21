@@ -43,10 +43,11 @@ async def _get_bond(session: ClientSession, url: str, isin: str):
             c1.text.replace("\xa0", ""): c2.text.replace("\xa0", "").replace(",", ".").replace(" ", "")
             for c1, c2 in zip(cells[::2], cells[1::2])
         }
-        price_table = body.find("div", {"data-qa-file": "SecurityPriceDetails"})
-        if price_table is None:
-            raise RuntimeError(url)
-        price = price_table.find("span")
+        # price_table = body.find("div", {"data-qa-file": "SecurityPriceDetails"})
+        # if price_table is None:
+        #     raise RuntimeError(f"Cannot read price for URL {url}")
+        # price = price_table.find("span", {"data-qa-type": "uikit/money"})
+        price = body.find("span", {"data-qa-type": "uikit/money"})
         if price.text[0].isdigit():
             price = float(
                 price.text.replace("\xa0", "").replace(",", ".").replace(" ", "")[:-1]

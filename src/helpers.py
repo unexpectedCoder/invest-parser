@@ -48,6 +48,6 @@ def get_bonds_url(url: str):
         "table", {"data-qa-file": "DataTable"}
     )
     rows = table.tbody.find_all("tr")
-    refs = [TINKOFF_URL + tr.a["href"] for tr in rows]
+    refs = [TINKOFF_URL + tr.td.a["href"] for tr in rows]
     isin_list = [ref.split("/")[-2] for ref in refs]
     return refs, isin_list
