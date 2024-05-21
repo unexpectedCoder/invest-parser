@@ -10,10 +10,12 @@ from src.helpers import Bond, get_bonds_url
 
 
 async def parse_bonds(bonds_url: str, pool: Pool):
-    urls, isins = get_bonds_url(bonds_url)
+    urls, isins, prices = get_bonds_url(bonds_url)
     async with ClientSession() as session:
         pending = [
-            asyncio.create_task(_get_bond(session, url, isin))
+            asyncio.create_task(
+                _get_bond(session, url, isin, prices[url.split("/")[-2]])
+            )
             for url, isin in zip(urls, isins)
         ]
         results = []
@@ -31,7 +33,10 @@ async def parse_bonds(bonds_url: str, pool: Pool):
         return [r.get() for r in results]
 
 
-async def _get_bond(session: ClientSession, url: str, isin: str):
+async def _get_bond(session: ClientSession,
+                    url: str,
+                    isin: str,
+                    price: float):
     async with session.get(url) as resp:
         page = await resp.read()
         body = BeautifulSoup(page, "html5lib").body
@@ -40,20 +45,10 @@ async def _get_bond(session: ClientSession, url: str, isin: str):
         for table in tables:
             cells.extend(table.find_all("td", {"data-qa-file": "TableCell"}))
         data = {
-            c1.text.replace("\xa0", ""): c2.text.replace("\xa0", "").replace(",", ".").replace(" ", "")
+            c1.text.replace("\xa0", ""):
+            c2.text.replace("\xa0", "").replace(",", ".").replace(" ", "")
             for c1, c2 in zip(cells[::2], cells[1::2])
         }
-        # price_table = body.find("div", {"data-qa-file": "SecurityPriceDetails"})
-        # if price_table is None:
-        #     raise RuntimeError(f"Cannot read price for URL {url}")
-        # price = price_table.find("span", {"data-qa-type": "uikit/money"})
-        price = body.find("span", {"data-qa-type": "uikit/money"})
-        if price.text[0].isdigit():
-            price = float(
-                price.text.replace("\xa0", "").replace(",", ".").replace(" ", "")[:-1]
-            )
-        else:
-            price = 0.
         data["Рыночная цена"] = price
         data["ISIN"] = isin
         return Bond(data, url, isin)

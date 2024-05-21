@@ -49,5 +49,20 @@ def get_bonds_url(url: str):
     )
     rows = table.tbody.find_all("tr")
     refs = [TINKOFF_URL + tr.td.a["href"] for tr in rows]
+    prices = {
+        bond.split("/")[-2]:
+        tr.find_all("span", {"data-qa-type": "uikit/money"})[-1]
+        for tr, bond in zip(rows, refs)
+    }
+    for k, price in prices.items():
+        if "₽" in price.text and price.text[0].isdigit():
+            prices[k] = float(
+                price.text
+                .replace("\xa0", "")
+                .replace(",", ".")
+                .replace(" ", "")[:-1]
+            )
+        else:
+            prices[k] = 0.
     isin_list = [ref.split("/")[-2] for ref in refs]
-    return refs, isin_list
+    return refs, isin_list, prices
